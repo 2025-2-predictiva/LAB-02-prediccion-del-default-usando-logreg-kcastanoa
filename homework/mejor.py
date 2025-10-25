@@ -81,7 +81,7 @@ import numpy as np
 
 # Grid mínimo para cumplir la especificación
 param_grid = {
-    "selectkbest__k": [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,"all"],
+    "selectkbest__k": [12,22,24,"all"],
     "estimator__penalty":["l2"],
     "estimator__solver": ["liblinear"],
     "estimator__C": np.logspace(-4, 3, 15),
