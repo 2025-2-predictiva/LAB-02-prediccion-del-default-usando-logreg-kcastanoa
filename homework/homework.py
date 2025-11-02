@@ -178,10 +178,10 @@ import numpy as np
 
 # Grid mínimo para cumplir la especificación
 param_grid = {
-    "selectkbest__k": [1, (len(x_train.columns)+1)],
+    "selectkbest__k": [1, 8, 12],
     "estimator__penalty":["l1"],
     "estimator__solver": ["liblinear"],
-    "estimator__C": [0.095,0.099,1],
+    "estimator__C": [1,10],
     "estimator__class_weight":[None, "balanced"],
 }
 
