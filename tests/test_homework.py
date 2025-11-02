@@ -24,7 +24,7 @@ METRICS = [
     {
         "type": "metrics",
         "dataset": "train",
-        "precision": 0.68,
+        "precision": 0.693,
         "balanced_accuracy": 0.639,
         "recall": 0.319,
         "f1_score": 0.437,
@@ -32,7 +32,7 @@ METRICS = [
     {
         "type": "metrics",
         "dataset": "test",
-        "precision": 0.67,
+        "precision": 0.70,
         "balanced_accuracy": 0.654,
         "recall": 0.349,
         "f1_score": 0.466,
@@ -40,13 +40,13 @@ METRICS = [
     {
         "type": "cm_matrix",
         "dataset": "train",
-        "true_0": {"predicted_0": 15460, "predicted_1": None},
+        "true_0": {"predicted_0": 15560, "predicted_1": None},
         "true_1": {"predicted_0": None, "predicted_1": 1508},
     },
     {
         "type": "cm_matrix",
         "dataset": "test",
-        "true_0": {"predicted_0": 6735, "predicted_1": None},
+        "true_0": {"predicted_0": 6785, "predicted_1": None},
         "true_1": {"predicted_0": None, "predicted_1": 660},
     },
 ]

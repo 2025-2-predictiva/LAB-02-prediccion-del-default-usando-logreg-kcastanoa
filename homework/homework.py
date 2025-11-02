@@ -96,19 +96,9 @@
 # {'type': 'cm_matrix', 'dataset': 'test', 'true_0': {"predicted_0": 15562, "predicte_1": 650}, 'true_1': {"predicted_0": 2490, "predicted_1": 1420}}
 #
 import pandas as pd
-import numpy as np
 import gzip
 import pickle
 import os
-import json
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
-from sklearn.feature_selection import SelectKBest, f_classif
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
-from sklearn.metrics import balanced_accuracy_score, make_scorer,precision_score, recall_score, f1_score, balanced_accuracy_score, confusion_matrix
-
 
 test_data = pd.read_csv(
         f"files/input/test_data.csv.zip",
@@ -154,7 +144,7 @@ def make_pipeline(estimator):
     from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
     from sklearn.feature_selection import SelectKBest, f_classif
 
-    cols=['SEX','EDUCATION','MARRIAGE','PAY_0', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5', 'PAY_6']
+    cols=['SEX','EDUCATION','MARRIAGE']
     cols_num=[c for c in x_train.columns if c not in cols]
     transformer = ColumnTransformer(
         transformers=[
@@ -167,7 +157,7 @@ def make_pipeline(estimator):
     
     pipeline = Pipeline(
         steps=[
-            ("transformer", transformer),
+            ("tranformer", transformer),
             ("selectkbest", selectkbest),
             ("estimator", estimator),
         ],
@@ -177,29 +167,23 @@ def make_pipeline(estimator):
     return pipeline
 
 # Modelo estimador
+from sklearn.linear_model import LogisticRegression
 lg = LogisticRegression(random_state=42, max_iter=4000)
 lg_estimator=make_pipeline(lg)
 
 ## Paso 4 Optimizar hiperparámetros 10 splits
-
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.metrics import balanced_accuracy_score, make_scorer
+import numpy as np
 
 # Grid mínimo para cumplir la especificación
-param_grid = [# l2 puede ir con lbfgs y liblinear
-    {
-        "selectkbest__k":[20,21,22,23,24,"all"],
-        "estimator__penalty":["l2"],
-        "estimator__solver": ["lbfgs", "liblinear"],
-        "estimator__C": np.linspace(0.006, 0.1, 20),
-        "estimator__class_weight" : [None, "balanced"],
-    },
-    # l1 solo sirve con liblinear
-    {
-        "selectkbest__k":[20,21,22,23,24,"all"],
-        "estimator__penalty":["l1"],
-        "estimator__solver": ["liblinear"],
-        "estimator__C": np.linspace(0.006, 0.1, 20),
-        "estimator__class_weight" : [None, "balanced"],
-    }]
+param_grid = {
+    "selectkbest__k": [1, (len(x_train.columns)+1)],
+    "estimator__penalty":["l1"],
+    "estimator__solver": ["liblinear"],
+    "estimator__C": [0.095,0.099,1],
+    "estimator__class_weight":[None, "balanced"],
+}
 
 cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 scorers = {
@@ -216,6 +200,7 @@ grid_search = GridSearchCV(estimator=lg_estimator,
     verbose=0)
 
 
+
 ## Paso 5 Guardar el modelo comprimido
 grid_search.fit(x_train,y_train)
 
@@ -227,39 +212,18 @@ def save_estimator(estimator):
         pickle.dump(estimator, file)
 
 save_estimator(grid_search)
+best_est = grid_search.best_estimator_
+print(best_est)
 
 ## Paso 6 Métricas de precisión
+import json
+from sklearn.metrics import precision_score, recall_score, f1_score, balanced_accuracy_score
 
 with gzip.open("files/models/model.pkl.gz", "rb") as f:
     loaded_model = pickle.load(f)
 
-best_est = grid_search.best_estimator_
-print(best_est)
-# 1) Encuentra el mejor umbral en TRAIN: max BA con precision >= 0.693
-TARGET_PREC = 0.693
-p_train = best_est.predict_proba(x_train)[:, 1]
-
-thresholds = np.linspace(0.3, 0.70, 200)
-best_t, best_bacc = 0.5, -1.0
-for t in thresholds:
-    yhat = (p_train >= t).astype(int)
-    prec = precision_score(y_train, yhat, zero_division=0)
-    if prec >= TARGET_PREC:
-        bacc = balanced_accuracy_score(y_train, yhat)
-        if bacc > best_bacc:
-            best_bacc, best_t = bacc, t
-
-# fallback si ningún t alcanza la precisión mínima (raro, pero por si acaso)
-if best_bacc < 0:
-    best_t = 0.9
-
-# 2) Predicciones con ese umbral
-def predict_with_t(model, X, t):
-    return (model.predict_proba(X)[:, 1] >= t).astype(int)
-
-y_train_pred = predict_with_t(best_est, x_train, best_t)
-y_test_pred  = predict_with_t(best_est,  x_test,  best_t)
-
+y_train_pred = grid_search.predict(x_train)
+y_test_pred = grid_search.predict(x_test)
 
 metrics = [
     {
@@ -287,7 +251,7 @@ with open("files/output/metrics.json", "w") as f:
         f.write(json.dumps(row) + "\n")
 
 ## Paso 7 Matrices de confusión
-
+from sklearn.metrics import confusion_matrix
 cm_train = confusion_matrix(y_train, y_train_pred)
 cm_test = confusion_matrix(y_test, y_test_pred)
 
@@ -311,3 +275,4 @@ metrics = [
 with open("files/output/metrics.json", "a") as f:
     for row in metrics:
         f.write(json.dumps(row) + "\n")
+
